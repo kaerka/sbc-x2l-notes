@@ -133,6 +133,24 @@ It is not intended for heavy workloads, but it has proven useful within its inte
 
 ---
 
+### Note on CPU C-state Configuration
+
+During testing, I observed that system stability was sensitive to the
+`Max Core C State` setting in the BIOS.
+
+The default value (`Fused`) allows the firmware to select the deepest
+supported core C-states dynamically. In my case, this resulted in
+repeatable system lockups shortly after boot under Windows 11.
+
+Setting `Max Core C State` explicitly to **Core C6** eliminated these
+lockups and allowed the system to run stably for extended periods,
+including under sustained CPU and GPU load.
+
+This appears to be related to idle-to-load power state transitions rather
+than sustained thermal limits.
+
+---
+
 ## Closing Notes
 
 These notes are primarily here so that:
