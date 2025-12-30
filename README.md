@@ -150,6 +150,63 @@ This appears to be related to idle-to-load power state transitions rather
 than sustained thermal limits.
 
 ---
+## Additional Observations and Follow-On Thoughts
+
+After reaching a stable configuration and using the system for a longer period of time, a few additional points became clear.
+
+### Practical Usability
+
+With the current BIOS configuration (Turbo enabled, Max Core C-State capped at C6), the system is stable and responsive enough for its intended role. In practice, this includes:
+
+- Light 3D design and CAD work (Fusion, FreeCAD)
+- 3D slicing and preparation for printing
+- Light development work
+- General Windows or Linux desktop use
+- Gaming via remote/streamed connections (e.g. Steam Remote Play)
+
+While local GPU performance is limited, remote workloads perform very well, and the system behaves reliably even under combined CPU, GPU, and memory load.
+
+---
+
+### x86 + GPIO as a Key Differentiator
+
+One particularly interesting aspect of the X2L is the availability of **GPIO on an x86 platform**. This is relatively uncommon and opens up use cases beyond typical SBC roles.
+
+This makes the platform potentially useful for:
+
+- Portable development and testing systems that require GPIO
+- Edge or field systems where x86 compatibility is preferred
+- Replacing ARM-based boards (such as Jetson Nano) when GPIO is required but GPU acceleration is not the primary need
+
+In scenarios where Jetson Nano systems are used mainly for GPIO and light control logic, an x86 platform like this offers several advantages:
+- Ability to run standard Linux distributions without vendor BSP constraints
+- Easier long-term maintenance and patching
+- Integration into existing enterprise or development workflows
+- Reduced dependency on aging or locked-down software stacks
+
+Recompiling custom code for x86 is generally a small tradeoff compared to the operational flexibility gained.
+
+---
+
+### Separation of Roles Across Multiple Units
+
+At this point, it makes sense to keep individual systems dedicated to specific roles:
+
+- One unit configured and tuned for **Windows**
+- One unit running **Fedora**
+- A potential additional unit dedicated to **RHEL 9** testing
+
+Maintaining known-good reference configurations avoids unnecessary churn and preserves reliable baselines for comparison.
+
+---
+
+### Looking Forward
+
+While the X2L is not intended to replace higher-performance systems, the overall platform concept has proven sound. With additional compute capability (e.g. a stronger CPU, more memory, or an onboard NPU), a similar design could realistically replace a wider range of small edge and development systems.
+
+The key takeaway is not raw performance, but predictability, stability, and the ability to run standard operating systems with minimal platform-specific constraints.
+
+---
 
 ## Closing Notes
 
