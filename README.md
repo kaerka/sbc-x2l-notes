@@ -1,246 +1,144 @@
-# Radxa X2L – Windows 11 on an SBC  
-## Field Notes, Failure Analysis, and Thermal Postmortem
+# Radxa X2L – Windows 11 Notes
 
-> **TL;DR**  
-> Windows 11 *does* run on the Radxa X2L (Intel Celeron J4125).  
-> Early installer failures were **not firmware, storage, or USB issues** — they were **thermal lockups**.  
-> Once thermals were addressed, the system became stable enough to run real workloads (Fusion, Steam, slicers).
+This repository contains notes from experimenting with running **Windows 11** on a **Radxa X2L** (Intel Celeron J4125).
+
+The goal was not to build a high-performance system, but to see whether the X2L could function as a **portable x86_64 Windows node** for occasional Windows-only applications and general experimentation.
+
+These notes document what I observed during installation, the issues I ran into, and what ultimately made the system usable.
 
 ---
 
-## Why This Repository Exists
+## Motivation
 
-This repository documents an experiment that was *not* supposed to work:
+I wanted a small, modular Windows system that could:
 
-- Installing **Windows 11** on a **Radxa X2L SBC**
-- Using it as a **portable x86_64 Windows node**
-- Running **real software**, not just benchmarks:
-  - Autodesk Fusion
+- Run Windows-only applications when needed
+- Be swapped in and out of a larger workflow
+- Coexist alongside Linux-based SBC systems
+- Serve as a portable or secondary Windows environment
+
+This was not intended to replace a workstation or gaming system.
+
+---
+
+## Hardware Used
+
+- **Board:** Radxa X2L  
+- **CPU:** Intel Celeron J4125 (4 cores / 4 threads)  
+- **Memory:** 8 GB  
+- **Graphics:** Intel UHD Graphics 600  
+- **Storage:** NVMe SSD  
+- **Cooling:** Stock heatsink and fan  
+- **OS:** Windows 11 (current installer at time of testing)
+
+---
+
+## Initial Installation Experience
+
+During early attempts to install Windows 11, I observed a number of behaviors that made the process confusing:
+
+- The Windows installer would consistently stop progressing around **6–7%**
+- The system would sometimes reboot into the EFI shell
+- USB devices would occasionally not appear after a reboot
+- NVMe storage would sometimes appear unavailable until power was removed for a while
+- Behavior varied depending on USB port and boot order
+
+At the time, this made it difficult to tell whether the issue was related to firmware, storage, USB, or the installer itself.
+
+---
+
+## What Eventually Became Clear
+
+After multiple attempts and incremental testing, it became clear that the system behavior was strongly correlated with **time under load**, rather than with a specific installer step.
+
+A few observations stood out:
+
+- Lockups would occur a few minutes after boot, regardless of what the system was doing
+- The same behavior occurred during installation, first boot, login, and even idle periods
+- Powering the system off for a while often allowed it to boot again
+
+This suggested that the system was reaching a limit over time, rather than failing at a specific configuration step.
+
+---
+
+## Cooling and CPU Configuration
+
+While observing fan behavior in the BIOS, I noticed that:
+
+- Reported CPU temperatures were relatively low
+- The fan would suddenly ramp up shortly before the system became unresponsive
+
+I experimented with several BIOS settings to reduce sustained load, including:
+
+- Disabling turbo/boost behavior
+- Temporarily disabling Intel SpeedStep
+- Reducing the number of active CPU cores
+- Making the fan respond earlier
+
+With these changes in place, the Windows installer was able to complete, and the system could finish setup and boot into the desktop.
+
+Over time, features were re-enabled gradually while watching for stability.
+
+---
+
+## Wi-Fi Observation
+
+At one point, removing the PCIe Wi-Fi card made early boot behavior more predictable.  
+After thermal behavior was better understood and controlled, the Wi-Fi card was reinstalled and worked normally.
+
+This appeared to be related to overall system load rather than a problem with the Wi-Fi hardware itself.
+
+---
+
+## System Behavior After Setup
+
+Once the system was able to remain stable:
+
+- Windows 11 could stay running for extended periods
+- Networking functioned normally
+- Steam installed successfully and reported hardware correctly
+- Local Steam transfers worked at expected speeds
+- Several applications installed and launched, including:
   - Bambu Studio
-  - Steam (including local-network game transfer)
   - GitHub Desktop
   - Syncthing
-  - Remote desktop (NoMachine)
+  - Autodesk Fusion (usable, with expected performance limits)
 
-This is **not** about performance.  
-It is about **viability, stability, and understanding failure modes** on small x86 SBCs.
-
----
-
-## Hardware Overview
-
-| Component | Details |
-|---------|--------|
-| Board | Radxa X2L |
-| CPU | Intel Celeron J4125 (4 cores / 4 threads, 2.0 GHz base) |
-| RAM | 8 GB |
-| GPU | Intel UHD Graphics 600 (DVMT, ~128 MB reported) |
-| Storage | NVMe SSD |
-| Cooling | Heatsink + fan (stock configuration initially) |
-| OS | Windows 11 (24H2 / 2025-era installer) |
+At this point the system became predictable and usable within the constraints of the hardware.
 
 ---
 
-## Initial Symptoms (Misleading but Real)
+## Observations and Takeaways
 
-During early installation attempts, the system exhibited:
+A few general observations from this process:
 
-- Windows installer hanging consistently at **6–7%**
-- EFI shell appearing after reboot
-- USB devices disappearing after hangs
-- NVMe disks briefly reporting **0 bytes**
-- Successful boots after long power-off periods
-- Different behavior depending on USB port used
+- Windows installation places sustained load on small systems
+- Thermal behavior can influence symptoms that initially look unrelated
+- USB and storage behavior can be affected indirectly by system load
+- Small x86 SBCs are capable of running modern software when expectations are set appropriately
 
-These symptoms strongly suggested:
-- USB controller instability
-- Firmware / BIOS issues
-- fTPM or Secure Boot interactions
-- NVMe enclosure or bridge failures
-
-**All of these appeared plausible — and all were incorrect as root causes.**
+Nothing observed suggested faulty hardware — the system simply needed to be configured with its thermal and performance envelope in mind.
 
 ---
 
-## Final Root Cause
+## Current Use
 
-### 🔥 Thermal runaway causing hard system lockups
+The X2L is now usable as:
 
-The board was **overheating under sustained load**, causing:
+- A portable Windows environment
+- A companion system alongside Linux SBCs
+- A way to run Windows-only tools when needed
 
-- Complete system freezes (no BSOD, no panic)
-- USB controller wedging
-- Apparent installer “hangs”
-- Firmware fallback into EFI shell
-- Recovery only after cooling down
-
-In short:
-
-> The system was not crashing — it was **thermally locking up**.
+It is not intended for heavy workloads, but it has proven useful within its intended scope.
 
 ---
 
-## How the Root Cause Was Identified
+## Closing Notes
 
-### 1. Time-based failures, not task-based
-- Lockups occurred **2–3 minutes after boot**
-- Same behavior during:
-  - Windows installer
-  - First boot
-  - Login screen
-  - Idle desktop
+These notes are primarily here so that:
 
-### 2. Fan behavior exposed the truth
-- BIOS reported CPU ~32°C
-- Default fan ramp was ~60°C
-- Fan suddenly ramped **immediately before lockup**
-- Lowering fan ramp to ~33°C caused:
-  - Audible fan spike
-  - Immediate freeze
+- I can reproduce the setup later
+- Others experimenting with similar hardware have a reference
+- The reasoning behind certain configuration choices is documented
 
-➡️ On-die hotspots were significantly hotter than BIOS telemetry suggested.
-
-### 3. Disabling CPU features restored stability
-Temporary mitigations that allowed installation to complete:
-
-- Disable Intel Turbo / Boost
-- Disable Intel SpeedStep
-- Disable two CPU cores
-- Force aggressive fan behavior
-
-With these changes:
-- Windows 11 installation completed
-- OOBE completed
-- Desktop became usable
-
-Re-enabling features too early reintroduced instability.
-
-### 4. Wi-Fi card was a secondary amplifier
-- Radxa A8 PCIe Wi-Fi card worsened instability
-- Removing Wi-Fi allowed early boot
-- Reinstalling Wi-Fi **after thermal fixes** worked normally
-
-➡️ Wi-Fi increased thermal load but was not the root cause.
-
----
-
-## Why the Installer Always Hung at ~7%
-
-That phase of Windows setup involves:
-
-- Sustained CPU usage
-- Memory pressure
-- Heavy NVMe writes
-- USB I/O
-- iGPU activity (1080p output)
-
-In other words:
-
-> **Maximum sustained thermal load**
-
-The installer was not hung — the system was **thermally locked**.
-
----
-
-## Validation After Thermal Stabilization
-
-Once thermals were controlled:
-
-- System uptime exceeded **1 hour**
-- Wi-Fi stable
-- Steam installed successfully
-- Steam hardware survey correctly reported:
-  - Intel Celeron J4125
-  - 4 cores / 4 threads
-  - Intel UHD 600
-  - 8 GB RAM
-- Applications successfully installed and launched:
-  - Bambu Studio (usable)
-  - GitHub Desktop
-  - Syncthing
-  - Autodesk Fusion (surprisingly usable)
-- Steam local-network game transfer:
-  - ~250–275 Mbps sustained
-  - No instability during 30+ GB transfer
-
-At this point the system crossed from **fragile** to **predictable**.
-
----
-
-## What Actually Caused the Overheating
-
-Likely contributors:
-
-- Marginal thermal pad contact
-- Insufficient heatsink mounting pressure
-- Conservative fan curve defaults
-- Sustained 1080p output increasing iGPU load
-- Small SBC thermal mass
-- Burst-heavy modern installers
-
-Nothing was defective — the system was simply **under-cooled**.
-
----
-
-## Lessons Learned
-
-### The Big One
-> Many SBC “firmware” and “installer” failures are actually **thermal failures**.
-
-### Practical Takeaways
-- BIOS temperature readings can be misleading
-- Windows setup is an excellent thermal stress test
-- USB instability can be a downstream thermal symptom
-- CPU, GPU, Wi-Fi, and I/O stack heat very quickly
-- Cold power cycles “fix” things because they cool the board
-
----
-
-## Recommended Configuration
-
-### Hardware
-- Replace thermal pad with **high-quality thermal paste**
-- Ensure even heatsink pressure
-- Consider always-on fan or aggressive fan curve
-
-### BIOS
-- Enable SpeedStep
-- Disable Turbo Boost (or cap clocks)
-- Use aggressive fan ramp
-- Re-enable CPU cores gradually while testing
-
-### OS
-- Reduce display resolution where possible
-- Use balanced or capped power plans
-- Expect UHD 600 + low VRAM to be the primary limitation
-
----
-
-## Final Verdict
-
-**Windows 11 on the Radxa X2L is viable**, with constraints:
-
-- ✅ Stable once thermals are addressed
-- ✅ Works as a portable Windows node
-- ✅ Runs real productivity software
-- ❌ Not a gaming machine
-- ❌ Not thermally forgiving
-
-Most importantly:
-
-> **This validated the architecture, not the performance.**
-
-Which means a future drop-in board upgrade (better CPU, GPU, RAM, cooling) is not just justified — it is *proven*.
-
----
-
-## Status
-
-✔ Root cause identified  
-✔ Reproducible  
-✔ Documented  
-✔ Lessons extracted  
-
-This repository exists so the next person does not spend two days chasing ghosts that were really just heat.
-
-
+This was a useful exercise in understanding how modern software behaves on small, modular systems.
