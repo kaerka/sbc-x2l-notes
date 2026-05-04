@@ -1,7 +1,7 @@
 # Radxa X2L – Windows 11 Installation Notes & Root Cause Summary
 
 ## Goal
-Install Windows 11 on a Radxa X2L (Alder Lake-N) as a **portable x86_64 Windows appliance** for:
+Install Windows 11 on a Radxa X2L (Celeron J4125) as a **portable x86_64 Windows appliance** for:
 - Fusion 360
 - Bambu Studio / slicers
 - Windows-only tools

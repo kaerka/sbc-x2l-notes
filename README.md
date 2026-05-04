@@ -1,219 +1,216 @@
-# Radxa X2L – Windows 11 Notes
+# Radxa X2L — Windows 11 field notes
 
-This repository contains notes from experimenting with running **Windows 11** on a **Radxa X2L** (Intel Celeron J4125).
+Hands-on notes from running **Windows 11** on a **Radxa X2L** (Intel Celeron **J4125**, 8 GB RAM, Intel UHD Graphics 600, NVMe). The aim was a **small, standard x86_64 Windows node** for occasional Windows-only applications, light CAD/slicer work, and remote use — not a primary workstation.
 
-The goal was not to build a high-performance system, but to see whether the X2L could function as a **portable x86_64 Windows node** for occasional Windows-only applications and general experimentation.
+**Audience:** Technical readers evaluating similar hardware for labs, edge prototypes, or companion systems next to Linux SBCs.
 
-These notes document what I observed during installation, the issues I ran into, and what ultimately made the system usable.
+**Disclaimer:** These are individual observations on one board and BIOS revision. They are not a Radxa or Microsoft endorsement, and your firmware, peripherals, or workload may behave differently.
+
+---
+
+## Scope of this document
+
+| In scope | Out of scope (for now) |
+|----------|-------------------------|
+| Windows 11 installation pitfalls, thermal/power behavior, BIOS-related mitigations | Step-by-step OEM imaging or enterprise deployment guides |
+| Practical workload evidence (screenshots below) | Formal benchmarking or certification |
+
+**Related work:** A separate write-up may cover **RHEL** or **ArgusOS** on a second unit later; this README is intentionally focused on **Windows 11** only.
 
 ---
 
 ## Motivation
 
-I wanted a small, modular Windows system that could:
-
-- Run Windows-only applications when needed
-- Be swapped in and out of a larger workflow
-- Coexist alongside Linux-based SBC systems
-- Serve as a portable or secondary Windows environment
-
-This was not intended to replace a workstation or gaming system.
+- Run Windows-only tools when needed without dedicating a full desktop  
+- Swap a compact module in and out of a larger workflow  
+- Sit beside Linux-based boards while staying on a mainstream Windows stack  
+- Optional remote access (e.g. NoMachine) for operations from another machine  
 
 ---
 
-## Hardware Used
+## Hardware configuration
 
-- **Board:** Radxa X2L  
-- **CPU:** Intel Celeron J4125 (4 cores / 4 threads)  
-- **Memory:** 8 GB  
-- **Graphics:** Intel UHD Graphics 600  
-- **Storage:** NVMe SSD  
-- **Cooling:** Stock heatsink and fan  
-- **OS:** Windows 11 (current installer at time of testing)
-
----
-
-## Initial Installation Experience
-
-During early attempts to install Windows 11, I observed a number of behaviors that made the process confusing:
-
-- The Windows installer would consistently stop progressing around **6–7%**
-- The system would sometimes reboot into the EFI shell
-- USB devices would occasionally not appear after a reboot
-- NVMe storage would sometimes appear unavailable until power was removed for a while
-- Behavior varied depending on USB port and boot order
-
-At the time, this made it difficult to tell whether the issue was related to firmware, storage, USB, or the installer itself.
+| Component | Detail |
+|-----------|--------|
+| Board | Radxa X2L |
+| CPU | Intel Celeron J4125 (4 cores / 4 threads, no hyper-threading) |
+| Memory | 8 GB |
+| Graphics | Intel UHD Graphics 600 |
+| Storage | NVMe SSD |
+| Cooling | Stock heatsink and fan |
+| OS tested | Windows 11 (installer current at time of testing) |
 
 ---
 
-## What Eventually Became Clear
+## Installation experience (summary)
 
-After multiple attempts and incremental testing, it became clear that the system behavior was strongly correlated with **time under load**, rather than with a specific installer step.
+Early Windows setup was unreliable:
 
-A few observations stood out:
+- Installer often stalled around **6–7%**
+- Occasional reboot into **EFI shell**
+- **USB** devices sometimes missing after reboot until a cold power cycle
+- **NVMe** occasionally not visible until power had been removed for a period  
+- Behavior varied with **USB port** and **boot order**
 
-- Lockups would occur a few minutes after boot, regardless of what the system was doing
-- The same behavior occurred during installation, first boot, login, and even idle periods
-- Powering the system off for a while often allowed it to boot again
-
-This suggested that the system was reaching a limit over time, rather than failing at a specific configuration step.
-
----
-
-## Cooling and CPU Configuration
-
-While observing fan behavior in the BIOS, I noticed that:
-
-- Reported CPU temperatures were relatively low
-- The fan would suddenly ramp up shortly before the system became unresponsive
-
-I experimented with several BIOS settings to reduce sustained load, including:
-
-- Disabling turbo/boost behavior
-- Temporarily disabling Intel SpeedStep
-- Reducing the number of active CPU cores
-- Making the fan respond earlier
-
-With these changes in place, the Windows installer was able to complete, and the system could finish setup and boot into the desktop.
-
-Over time, features were re-enabled gradually while watching for stability.
+Initially it was unclear whether firmware, storage, USB, or the installer was at fault.
 
 ---
 
-## Wi-Fi Observation
+## Root cause direction: time under load
 
-At one point, removing the PCIe Wi-Fi card made early boot behavior more predictable.  
-After thermal behavior was better understood and controlled, the Wi-Fi card was reinstalled and worked normally.
+Repeated trials suggested correlation with **time under load**, not a single wizard step:
 
-This appeared to be related to overall system load rather than a problem with the Wi-Fi hardware itself.
+- Lockups appeared minutes after boot during install, first boot, login, or idle stretches  
+- Cooling adjustments changed outcomes more than rearranging installer steps  
+- A longer powered-off interval often allowed another boot attempt  
 
----
-
-## System Behavior After Setup
-
-Once the system was able to remain stable:
-
-- Windows 11 could stay running for extended periods
-- Networking functioned normally
-- Steam installed successfully and reported hardware correctly
-- Local Steam transfers worked at expected speeds
-- Several applications installed and launched, including:
-  - Bambu Studio
-  - GitHub Desktop
-  - Syncthing
-  - Autodesk Fusion (usable, with expected performance limits)
-
-At this point the system became predictable and usable within the constraints of the hardware.
+That pointed to **thermal / power-management envelope** symptoms rather than a single “bad ISO” failure mode.
 
 ---
 
-## Observations and Takeaways
+## BIOS-oriented mitigations (no photos in this set)
 
-A few general observations from this process:
+In firmware, CPU temperature readings stayed modest while the fan sometimes **ramped sharply shortly before** an apparent hang — consistent with hitting a limit indirectly rather than a steady high temperature readout.
 
-- Windows installation places sustained load on small systems
-- Thermal behavior can influence symptoms that initially look unrelated
-- USB and storage behavior can be affected indirectly by system load
-- Small x86 SBCs are capable of running modern software when expectations are set appropriately
+Experiments included reducing sustained CPU demand and changing fan responsiveness (e.g. turbo/boost tweaks, SpeedStep trials, fewer active cores, earlier fan ramps). With those in place, setup **completed** and the desktop became reachable; settings were **relaxed gradually** while watching stability.
 
-Nothing observed suggested faulty hardware — the system simply needed to be configured with its thermal and performance envelope in mind.
+**Wi‑Fi:** Removing the PCIe Wi‑Fi card briefly made early boot more predictable; after thermal behavior was understood, the card was reinstalled and worked normally — suggesting **overall platform stress**, not necessarily defective Wi‑Fi hardware.
 
 ---
 
-## Current Use
+## Critical BIOS finding: Max Core C-State
 
-The X2L is now usable as:
+Stability under Windows 11 was sensitive to **`Max Core C State`**:
 
-- A portable Windows environment
-- A companion system alongside Linux SBCs
-- A way to run Windows-only tools when needed
+- Default (**`Fused`**) allowed deep dynamic C-states and produced **repeatable lockups shortly after boot**.  
+- Setting **`Max Core C State`** explicitly to **`Core C6`** removed those lockups and allowed **extended runs**, including sustained CPU and GPU load.
 
-It is not intended for heavy workloads, but it has proven useful within its intended scope.
-
----
-
-### Note on CPU C-state Configuration
-
-During testing, I observed that system stability was sensitive to the
-`Max Core C State` setting in the BIOS.
-
-The default value (`Fused`) allows the firmware to select the deepest
-supported core C-states dynamically. In my case, this resulted in
-repeatable system lockups shortly after boot under Windows 11.
-
-Setting `Max Core C State` explicitly to **Core C6** eliminated these
-lockups and allowed the system to run stably for extended periods,
-including under sustained CPU and GPU load.
-
-This appears to be related to idle-to-load power state transitions rather
-than sustained thermal limits.
-
----
-## Additional Observations and Follow-On Thoughts
-
-After reaching a stable configuration and using the system for a longer period of time, a few additional points became clear.
-
-### Practical Usability
-
-With the current BIOS configuration (Turbo enabled, Max Core C-State capped at C6), the system is stable and responsive enough for its intended role. In practice, this includes:
-
-- Light 3D design and CAD work (Fusion, FreeCAD)
-- 3D slicing and preparation for printing
-- Light development work
-- General Windows or Linux desktop use
-- Gaming via remote/streamed connections (e.g. Steam Remote Play)
-
-While local GPU performance is limited, remote workloads perform very well, and the system behaves reliably even under combined CPU, GPU, and memory load.
+This aligns better with **idle ↔ active power-state transitions** than with sustained overheating alone.
 
 ---
 
-### x86 + GPIO as a Key Differentiator
+## Verified behavior after stabilization
 
-One particularly interesting aspect of the X2L is the availability of **GPIO on an x86 platform**. This is relatively uncommon and opens up use cases beyond typical SBC roles.
+With BIOS tuned (including **Max Core C State → Core C6**, turbo enabled per notes), the system became **predictable**:
 
-This makes the platform potentially useful for:
-
-- Portable development and testing systems that require GPIO
-- Edge or field systems where x86 compatibility is preferred
-- Replacing ARM-based boards (such as Jetson Nano) when GPIO is required but GPU acceleration is not the primary need
-
-In scenarios where Jetson Nano systems are used mainly for GPIO and light control logic, an x86 platform like this offers several advantages:
-- Ability to run standard Linux distributions without vendor BSP constraints
-- Easier long-term maintenance and patching
-- Integration into existing enterprise or development workflows
-- Reduced dependency on aging or locked-down software stacks
-
-Recompiling custom code for x86 is generally a small tradeoff compared to the operational flexibility gained.
+- Extended uptime on Windows 11  
+- Networking normal  
+- **Steam** recognized hardware correctly  
+- Local Steam transfers behaved as expected on Wi‑Fi (see screenshots)  
+- Examples that ran acceptably within hardware limits: **Bambu Studio**, **GitHub Desktop**, **Syncthing**, **Autodesk Fusion** (usable with realistic expectations)
 
 ---
 
-### Separation of Roles Across Multiple Units
+## Practical roles (aligned with enterprise-style use)
 
-At this point, it makes sense to keep individual systems dedicated to specific roles:
+- Portable or secondary Windows environment  
+- Companion to Linux SBCs  
+- Light CAD, slicing, scripting, documentation, or remote-first workflows  
 
-- One unit configured and tuned for **Windows**
-- One unit running **Fedora**
-- A potential additional unit dedicated to **RHEL 9** testing
-
-Maintaining known-good reference configurations avoids unnecessary churn and preserves reliable baselines for comparison.
+**Differentiator:** **GPIO on x86** is relatively uncommon; for teams that want x86 compatibility and tooling without ARM BSP coupling, platforms like this can be interesting for **prototyping and field kits** (Linux side not covered here).
 
 ---
 
-### Looking Forward
+## Multi-unit strategy
 
-While the X2L is not intended to replace higher-performance systems, the overall platform concept has proven sound. With additional compute capability (e.g. a stronger CPU, more memory, or an onboard NPU), a similar design could realistically replace a wider range of small edge and development systems.
-
-The key takeaway is not raw performance, but predictability, stability, and the ability to run standard operating systems with minimal platform-specific constraints.
+Keeping **one unit** as a known-good **Windows** baseline and **another** on **Fedora** (or later **RHEL / ArgusOS**) avoids configuration churn and preserves apples-to-apples comparisons.
 
 ---
 
-## Closing Notes
+## Screenshots and figures
 
-These notes are primarily here so that:
+Unless noted, captures were taken over **NoMachine** from a host named **Radxa-x2l-win11**. Paths use URL-encoded spaces (`%20`) so links work in GitHub-style viewers.
 
-- I can reproduce the setup later
-- Others experimenting with similar hardware have a reference
-- The reasoning behind certain configuration choices is documented
+### Figure 1 — Heavy installer load (Autodesk + Task Manager)
 
-This was a useful exercise in understanding how modern software behaves on small, modular systems.
+Typical sustained CPU use during a large installer on the J4125 (~96% CPU in this moment).
+
+![Autodesk installer at ~20% with Task Manager showing high CPU](./Screenshot%202025-12-30%20131223.png)
+
+### Figure 2 — Autodesk Fusion installer initializing
+
+Fusion installer splash with Task Manager (~86% CPU, ~72% RAM).
+
+![Fusion initializing with Performance tab](./Screenshot%202025-12-30%20131614.png)
+
+### Figure 3 — Autodesk Fusion session (CAD workload)
+
+Demonstrates interactive Fusion use on the board after stabilization (design session; UI shows normal Windows 11 desktop integration).
+
+![Fusion 3D modeling session](./Screenshot%202025-12-30%20132306.png)
+
+### Figures 4–5 — Installer progression and settled CPU
+
+Mid-install (~69%) and later (~88%) with detailed CPU specification visible in Task Manager.
+
+![Autodesk installer ~69% with Task Manager](./Screenshot%202025-12-30%20132415.png)
+
+![Autodesk installer ~88% with Task Manager](./Screenshot%202025-12-30%20132737.png)
+
+### Figures 6–7 — Developer toolchain install (VS Code)
+
+Shows VS Code setup extracting files alongside Task Manager — representative of software rollout stress on 8 GB RAM.
+
+![VS Code setup ~45% with Task Manager](./Screenshot%202025-12-30%20133413.png)
+
+![VS Code setup ~80% with Task Manager](./Screenshot%202025-12-30%20133435.png)
+
+### Figure 8 — Documentation / IDE workload
+
+VS Code editing Markdown project notes over remote desktop — illustrative of light technical writing or repo maintenance on the same hardware.
+
+![VS Code remote session](./Screenshot%202025-12-30%20134210.png)
+
+### Figures 9–12 — Steam “System Information”: X2L vs reference workstation
+
+The following images are **composite Steam hardware summaries**. In each pair, **the left window is the Radxa X2L (this Windows 11 build)**; **the right window is a separate high-end workstation** captured for **expectations calibration** (throughput, RAM, GPU features — not a performance contest).
+
+**Figure 9 — Storage footprint**
+
+![Steam storage summary: X2L left vs workstation right](./Screenshot%202025-12-30%20135428.png)
+
+**Figure 10 — Display and system RAM**
+
+![Steam video/RAM summary: X2L left vs workstation right](./Screenshot%202025-12-30%20135500.png)
+
+**Figure 11 — CPU capability flags**
+
+Left: **J4125** (no AVX / AVX2). Right: desktop-class CPU with wider SIMD support — relevant when selecting binaries or ML tooling.
+
+![Steam CPU summary: J4125 left vs Core i9 right](./Screenshot%202025-12-30%20135700.png)
+
+**Figure 12 — Integrated graphics vs discrete GPU**
+
+Left: **Intel UHD Graphics 600** at modest resolution. Right: discrete NVIDIA GPU — sets realistic bounds for local rendering vs remote/streamed workloads.
+
+![Steam GPU summary: UHD 600 left vs RTX class right](./Screenshot%202025-12-30%20135753.png)
+
+### Figures 13–14 — Local Steam transfer performance (Wi‑Fi)
+
+Steam **local network** game transfer (~250 Mbps class in these snapshots) with Task Manager showing concurrent CPU load — useful evidence that **Wi‑Fi and disk path** behave sanely for large payloads once the platform is stable.
+
+![Steam LAN transfer with Task Manager](./Screenshot%202025-12-30%20141054.png)
+
+![Steam LAN transfer sustained](./Screenshot%202025-12-30%20141355.png)
+
+---
+
+## Supporting artifacts in this folder
+
+- **`Radxa X2L – Windows 11 Installation.md`** — Longer symptom timeline and BIOS-update narrative (companion to this README).  
+- **`HWMonitor-X2L.txt`**, **`RADXA-X2L-WIN11.txt`** — Raw sensor / text dumps from testing if you need numeric traces beyond the screenshots.
+
+---
+
+## Takeaways for readers standardizing on this class of hardware
+
+1. Treat **installation stalls** as potential **platform envelope** issues — validate cooling, fan curves, and **core C-state** limits early.  
+2. Expect **AVX‑lite** CPUs; prefer stacks that do not assume AVX2 everywhere.  
+3. Use **remote desktop** when appropriate — integrated graphics is sufficient for tooling, not for workstation-class 3D.  
+4. Keep **golden images per role** (Windows vs Linux) when comparing boards across a team.
+
+---
+
+## Closing
+
+These notes exist so setups can be **reproduced**, choices **explained**, and others experimenting with similar kits have a **reference path**. Feedback and divergent BIOS revisions are welcome — capture your own screenshots against this outline if you extend the doc for **RHEL**, **ArgusOS**, or fleet deployment later.
